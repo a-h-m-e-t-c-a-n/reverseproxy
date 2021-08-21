@@ -1,0 +1,54 @@
+#ahmetcan.com.tr
+#21.08.2021
+
+version: "3.7"
+
+services:
+  reverseproxy:
+    build: ./nginx
+    image: reverseproxy-nginx
+    env_file:
+      - ./config.env
+    volumes:
+      - ./data/nginx_ssl:/etc/nginx/ssl
+      - ./data/certbot_certs:/etc/letsencrypt
+      - ./data/certbot/:/var/www/certbot/
+      - ./data/html/:/var/www/html/
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    networks: 
+      - andromeda
+
+  certbot:
+    build: ./certbot
+    image: xmachine/certbot
+    env_file:
+      - ./config.env
+    volumes:
+      - ./data/certbot_certs:/etc/letsencrypt
+      - ./data/certbot/:/var/www/certbot/
+    depends_on:
+      - reverseproxy
+    networks: 
+      - andromeda
+  cron:
+    build: ./cron
+    image: xmachine/cron
+    environment:
+      COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workdir:ro
+    depends_on:
+      - reverseproxy
+      - certbot
+    networks: 
+      - andromeda
+
+
+networks:
+  andromeda:
+      external: true
+      name: andromeda
